@@ -1,5 +1,7 @@
 # Cadenly — Smart Meeting Scheduler
 
+![Cadenly](assets/header.png)
+
 A polyglot system that turns a meeting recording into optimally scheduled, conflict-free tasks — end to end, with no cloud dependency. It listens, transcribes, summarizes, extracts action items, resolves who owns them and when they're due, and slots them into real calendars under real concurrent load, broadcasting every change live.
 
 Built as a deep dive into applying classical CS fundamentals — dynamic programming, concurrency control, graph algorithms — to a real, working system rather than isolated exercises.
