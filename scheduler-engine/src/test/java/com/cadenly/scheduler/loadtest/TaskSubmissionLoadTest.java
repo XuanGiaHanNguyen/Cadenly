@@ -4,10 +4,10 @@ import com.cadenly.scheduler.concurrency.ConcurrencyHarness;
 import com.cadenly.scheduler.model.TaskSubmissionItem;
 import com.cadenly.scheduler.model.TaskSubmissionRequest;
 import com.cadenly.scheduler.model.TaskSubmissionResponse;
+import com.cadenly.scheduler.testsupport.AbstractPostgresIntegrationTest;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 
@@ -22,14 +22,19 @@ import static org.assertj.core.api.Assertions.assertThat;
  * shortcut calling SchedulingService directly - exercises the actual
  * REST/Jackson/Spring MVC stack under concurrent load.
  *
+ * As of the Phase 10 Postgres migration this needs a real database (a
+ * @SpringBootTest can't start otherwise), so it now extends
+ * AbstractPostgresIntegrationTest - the same Testcontainers Postgres the
+ * integration tier uses. /api/tasks/submit stays permitAll() (see
+ * TaskSubmissionController), so no authentication is needed to hit it.
+ *
  * Tagged "load" and excluded from the default `mvn test` run (see pom.xml)
  * since it intentionally stresses the system with 200+ concurrent requests
  * and takes longer than a unit test. Run explicitly with:
  *   mvn test -Dgroups=load -DexcludedGroups=
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Tag("load")
-class TaskSubmissionLoadTest {
+class TaskSubmissionLoadTest extends AbstractPostgresIntegrationTest {
 
     private static final int THREADS = 200;
 

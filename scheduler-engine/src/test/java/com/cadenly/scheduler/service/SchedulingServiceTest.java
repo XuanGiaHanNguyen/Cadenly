@@ -1,5 +1,6 @@
 package com.cadenly.scheduler.service;
 
+import com.cadenly.scheduler.concurrency.SharedResourceCalendar;
 import com.cadenly.scheduler.model.TaskSubmissionItem;
 import com.cadenly.scheduler.model.TaskSubmissionResponse;
 import org.junit.jupiter.api.Test;
@@ -19,10 +20,11 @@ class SchedulingServiceTest {
     private final WeightedIntervalScheduler weightedIntervalScheduler = new WeightedIntervalScheduler();
     private final WeightCalculator weightCalculator = new WeightCalculator();
     private final SharedResourceCalendar sharedResourceCalendar = new SharedResourceCalendar();
+    private final TaskBoard taskBoard = new TaskBoard();
 
     private final SchedulingService service = new SchedulingService(
             ownerResolver, freeSlotService, candidateGenerator, weightedIntervalScheduler,
-            weightCalculator, sharedResourceCalendar
+            weightCalculator, sharedResourceCalendar, taskBoard
     );
 
     private final Instant now = Instant.now();

@@ -11,6 +11,8 @@ import com.cadenly.scheduler.model.TaskSubmissionItem;
 import com.cadenly.scheduler.model.TaskSubmissionResponse;
 import com.cadenly.scheduler.model.TimeSlot;
 import com.cadenly.scheduler.model.UnresolvedTaskResponse;
+import com.cadenly.scheduler.port.BookingStore;
+import com.cadenly.scheduler.port.TaskStore;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -41,7 +43,8 @@ public class SchedulingService {
     private final CandidateGenerator candidateGenerator;
     private final WeightedIntervalScheduler weightedIntervalScheduler;
     private final WeightCalculator weightCalculator;
-    private final SharedResourceCalendar sharedResourceCalendar;
+    private final BookingStore sharedResourceCalendar;
+    private final TaskStore taskBoard;
 
     public SchedulingService(
             OwnerResolver ownerResolver,
@@ -49,7 +52,8 @@ public class SchedulingService {
             CandidateGenerator candidateGenerator,
             WeightedIntervalScheduler weightedIntervalScheduler,
             WeightCalculator weightCalculator,
-            SharedResourceCalendar sharedResourceCalendar
+            BookingStore sharedResourceCalendar,
+            TaskStore taskBoard
     ) {
         this.ownerResolver = ownerResolver;
         this.freeSlotService = freeSlotService;
@@ -57,6 +61,7 @@ public class SchedulingService {
         this.weightedIntervalScheduler = weightedIntervalScheduler;
         this.weightCalculator = weightCalculator;
         this.sharedResourceCalendar = sharedResourceCalendar;
+        this.taskBoard = taskBoard;
     }
 
     public TaskSubmissionResponse submitTasks(List<TaskSubmissionItem> items) {
@@ -70,7 +75,8 @@ public class SchedulingService {
         for (TaskSubmissionItem item : items) {
             OwnerResolution resolution = ownerResolver.resolve(item.ownerName());
             if (!resolution.isResolved()) {
-                unresolved.add(new UnresolvedTaskResponse(item.ownerName(), item.description(), resolution.unresolvedReason()));
+                unresolved.add(new UnresolvedTaskResponse(item.ownerName(), item.description(), resolution.unresolvedReason(),
+                        item.priority(), item.estimatedDurationMinutes()));
                 continue;
             }
             Task task = new Task(
@@ -90,7 +96,9 @@ public class SchedulingService {
             scheduleForOwner(ownerId, tasks, now, placed, rejected);
         }
 
-        return new TaskSubmissionResponse(placed, rejected, unresolved);
+        TaskSubmissionResponse response = new TaskSubmissionResponse(placed, rejected, unresolved);
+        taskBoard.recordAll(response);
+        return response;
     }
 
     private void scheduleForOwner(
@@ -116,7 +124,8 @@ public class SchedulingService {
             if (candidate.isPresent()) {
                 candidates.add(candidate.get());
             } else {
-                rejected.add(new RejectedTaskResponse(task.description(), ownerId, "no free slot available before deadline"));
+                rejected.add(new RejectedTaskResponse(task.description(), ownerId, "no free slot available before deadline",
+                        task.priority(), (int) task.estimatedDuration().toMinutes()));
             }
         }
 
@@ -124,18 +133,21 @@ public class SchedulingService {
 
         for (ScheduledTask scheduled : result.placed()) {
             boolean committed = sharedResourceCalendar.tryBook(ownerId, new TimeSlot(scheduled.start(), scheduled.end()));
-            String description = tasksById.get(scheduled.taskId()).description();
+            Task task = tasksById.get(scheduled.taskId());
             if (committed) {
-                placed.add(new PlacedTaskResponse(description, ownerId, scheduled.start(), scheduled.end()));
+                placed.add(new PlacedTaskResponse(scheduled.taskId(), task.description(), ownerId, scheduled.start(), scheduled.end(),
+                        task.priority(), (int) task.estimatedDuration().toMinutes()));
             } else {
                 // The DP selected this slot from a snapshot of bookingsFor(ownerId); tryBook is
                 // the final, concurrency-safe authority and can still lose a genuine race that
                 // landed between the snapshot and the commit.
-                rejected.add(new RejectedTaskResponse(description, ownerId, "lost concurrency race for this slot"));
+                rejected.add(new RejectedTaskResponse(task.description(), ownerId, "lost concurrency race for this slot",
+                        task.priority(), (int) task.estimatedDuration().toMinutes()));
             }
         }
         for (Task task : result.rejected()) {
-            rejected.add(new RejectedTaskResponse(task.description(), ownerId, "not selected by scheduler (lower priority/weight)"));
+            rejected.add(new RejectedTaskResponse(task.description(), ownerId, "not selected by scheduler (lower priority/weight)",
+                    task.priority(), (int) task.estimatedDuration().toMinutes()));
         }
     }
 }

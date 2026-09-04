@@ -1,6 +1,7 @@
 package com.cadenly.scheduler.service;
 
 import com.cadenly.scheduler.model.ResourceBookedEvent;
+import com.cadenly.scheduler.model.ResourceUnbookedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
@@ -30,5 +31,10 @@ public class BookingBroadcastListener {
     @EventListener
     public void onResourceBooked(ResourceBookedEvent event) {
         messagingTemplate.convertAndSend("/topic/bookings", event);
+    }
+
+    @EventListener
+    public void onResourceUnbooked(ResourceUnbookedEvent event) {
+        messagingTemplate.convertAndSend("/topic/bookings/cancelled", event);
     }
 }
