@@ -1,7 +1,6 @@
 package com.cadenly.scheduler.concurrency;
 
 import com.cadenly.scheduler.model.TimeSlot;
-import com.cadenly.scheduler.service.SharedResourceCalendar;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -26,6 +25,12 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Prints throughput and (for optimistic) wasted CAS retries, so the
  * pessimistic-vs-optimistic tradeoff has real numbers behind it instead of
  * just the theoretical argument.
+ *
+ * As of the Phase 10 Postgres migration, this benchmarks a case-study
+ * fixture (see SharedResourceCalendar's class doc), not the production
+ * booking path - kept because the numbers are still real and the tradeoff
+ * they demonstrate is still true, just no longer the mechanism preventing
+ * double-booking in production.
  */
 class ConcurrencyBenchmarkTest {
 

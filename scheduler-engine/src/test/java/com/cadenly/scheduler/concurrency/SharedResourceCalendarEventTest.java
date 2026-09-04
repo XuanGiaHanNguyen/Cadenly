@@ -1,4 +1,4 @@
-package com.cadenly.scheduler.service;
+package com.cadenly.scheduler.concurrency;
 
 import com.cadenly.scheduler.model.ResourceBookedEvent;
 import com.cadenly.scheduler.model.TimeSlot;

@@ -1,7 +1,6 @@
 package com.cadenly.scheduler.concurrency;
 
 import com.cadenly.scheduler.model.TimeSlot;
-import com.cadenly.scheduler.service.SharedResourceCalendar;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -14,6 +13,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Proves the race condition exists without locking, then proves the same
  * concurrent-load harness no longer produces it once SharedResourceCalendar's
  * per-resource ReentrantLock is in place.
+ *
+ * As of the Phase 10 Postgres migration, SharedResourceCalendar is a
+ * concurrency case study and fast-test fixture, not the production booking
+ * path - see JpaBookingStoreConcurrencyTest for the equivalent proof
+ * against the real Postgres EXCLUDE constraint that replaced it in
+ * production. This test is unchanged and still passes: it's still true,
+ * just about a different (still real, still used-in-tests) implementation.
  */
 class RaceConditionTest {
 

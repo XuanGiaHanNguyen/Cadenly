@@ -10,8 +10,15 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * The REST adapter over SchedulingService.submitTasks - the Phase 1-2
  * design's "the recording pipeline calls a single scheduler-engine method"
- * seam. Called server-to-server from the recording pipeline, not from a
- * browser, so no CORS configuration is needed here (unlike BookingController).
+ * seam. Server-to-server from the recording pipeline (Service B); the
+ * dashboard also calls this directly for demo purposes.
+ *
+ * Deliberately left permitAll() in SecurityConfig (Phase 10 auth
+ * migration) rather than requiring a session, so Service B's integration
+ * contract doesn't change. TODO: harden this with a shared-secret header
+ * (e.g. X-Service-Key) checked in a lightweight filter if this ever runs
+ * somewhere less trusted than one local machine - deliberately deferred
+ * for now, not forgotten.
  */
 @RestController
 public class TaskSubmissionController {

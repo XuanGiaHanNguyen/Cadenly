@@ -1,6 +1,7 @@
 package com.cadenly.scheduler.service;
 
 import com.cadenly.scheduler.model.OwnerResolution;
+import com.cadenly.scheduler.port.OwnerDirectory;
 import org.springframework.stereotype.Component;
 
 import java.util.Set;
@@ -27,9 +28,9 @@ public class OwnerResolver {
             "n/a", "none", "tbd", "unclear"
     );
 
-    private final UserDirectoryService userDirectory;
+    private final OwnerDirectory userDirectory;
 
-    public OwnerResolver(UserDirectoryService userDirectory) {
+    public OwnerResolver(OwnerDirectory userDirectory) {
         this.userDirectory = userDirectory;
     }
 
