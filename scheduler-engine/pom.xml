@@ -15,7 +15,7 @@
     <artifactId>scheduler-engine</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <name>scheduler-engine</name>
-    <description>Service A: Scheduler Engine (free-slot detection, weighted interval scheduling)</description>
+    <description>Scheduler Engine: free-slot detection, weighted interval scheduling, concurrency-safe booking</description>
 
     <properties>
         <java.version>17</java.version>

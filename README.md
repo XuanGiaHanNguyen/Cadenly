@@ -40,14 +40,14 @@ Given a transcript and existing calendars, the system doesn't just place tasks f
 
 Two independently-tested services, split deliberately by strength rather than convenience:
 
-| | Service A — Scheduling Engine | Service B — Recording & AI Pipeline |
+| | `scheduler-engine` | `recording-pipeline` |
 |---|---|---|
 | **Language** | Java (Spring Boot) | Python (FastAPI) |
 | **Owns** | Task model, free-slot detection, DP scheduling, priority queues, locking, WebSocket broadcast | Audio ingestion, transcription, summarization, task extraction, deadline resolution |
 | **Why this language** | Mature, provable concurrency primitives (`ReentrantLock`, `ConcurrentHashMap`) | Best-in-class local NLP/ML ecosystem (Whisper, Ollama) |
 | **External dependencies** | None — everything local | None — Whisper and Llama both run fully offline |
 
-Communication: Service B calls Service A's REST endpoint (`POST /api/tasks/submit`) once tasks are extracted and resolved. The seam is a single method (`SchedulingService.submitTasks(...)`), designed from the start to be swappable for a message queue without touching either service's internals.
+Communication: the recording pipeline calls the scheduler engine's REST endpoint (`POST /api/tasks/submit`) once tasks are extracted and resolved. The seam is a single method (`SchedulingService.submitTasks(...)`), designed from the start to be swappable for a message queue without touching either service's internals.
 
 ## The algorithms, and why each one was chosen
 
@@ -87,10 +87,10 @@ The safety-critical behavior — never hallucinating a task that wasn't stated �
 
 | Test | Result |
 |---|---|
-| Service A, 200 concurrent requests, distinct owners | 980 req/sec, p50 184ms, all placed |
-| Service A, 200 concurrent requests, one contended owner | **2,982 req/sec**, p50 8ms — faster, because failing fast beats a full free-slot search once the calendar fills |
-| Service B, task extraction latency (1 / 5 / 15-min transcripts) | 11.2s → 136.6s → 408.6s — the dominant, worsening bottleneck as meetings get longer |
-| Service B, transcription latency (1 / 5 / 15-min transcripts) | 6.9s → 35.3s → 85.4s |
+| scheduler-engine, 200 concurrent requests, distinct owners | 980 req/sec, p50 184ms, all placed |
+| scheduler-engine, 200 concurrent requests, one contended owner | **2,982 req/sec**, p50 8ms — faster, because failing fast beats a full free-slot search once the calendar fills |
+| recording-pipeline, task extraction latency (1 / 5 / 15-min transcripts) | 11.2s → 136.6s → 408.6s — the dominant, worsening bottleneck as meetings get longer |
+| recording-pipeline, transcription latency (1 / 5 / 15-min transcripts) | 6.9s → 35.3s → 85.4s |
 | End-to-end pipeline throughput | 237 meetings/hour sustained (sequential by design — a single local model instance makes concurrent calls measure queuing, not throughput) |
 
 The extraction-vs-transcription scaling gap is the clearest actionable finding: at real meeting lengths, LLM extraction — not audio processing — is the bottleneck worth optimizing first (e.g., chunking long transcripts instead of a single call).
@@ -107,41 +107,41 @@ This mirrors a rule followed throughout the project: a boundary that silently re
 
 ## Tech stack
 
-**Service A:** Java, Spring Boot, `ReentrantLock` / `ConcurrentHashMap`, STOMP over WebSocket, JUnit
-**Service B:** Python, FastAPI, faster-whisper, Ollama (Llama 3.1 8B), `dateparser`, numpy, pytest
-**Dashboard:** Next.js, `@stomp/stompjs`
+**scheduler-engine:** Java, Spring Boot, `ReentrantLock` / `ConcurrentHashMap`, STOMP over WebSocket, JUnit
+**recording-pipeline:** Python, FastAPI, faster-whisper, Ollama (Llama 3.1 8B), `dateparser`, numpy, pytest
+**dashboard:** Next.js, `@stomp/stompjs`
 
 ## Project structure
 
 ```
-service-a/    Java scheduling engine — algorithms, concurrency, REST, WebSocket
-service-b/    Python recording/AI pipeline — transcription, summarization, extraction
-dashboard/    Next.js live-updating dashboard
+scheduler-engine/     Java scheduling engine — algorithms, concurrency, REST, WebSocket
+recording-pipeline/   Python recording/AI pipeline — transcription, summarization, extraction
+dashboard/            Next.js live-updating dashboard
 ```
 
 ## Running it
 
 ```bash
-# Service A
-cd service-a && mvn spring-boot:run          # localhost:8080
+# scheduler-engine
+cd scheduler-engine && mvn spring-boot:run    # localhost:8080
 
-# Service B (requires Ollama running with llama3.1:8b pulled)
-cd service-b && source .venv/bin/activate
+# recording-pipeline (requires Ollama running with llama3.1:8b pulled)
+cd recording-pipeline && source .venv/bin/activate
 uvicorn app.main:app --reload                 # localhost:8000
 
-# Dashboard
+# dashboard
 cd dashboard && npm install && npm run dev    # localhost:3000
 ```
 
 ## Testing
 
 ```bash
-# Service A — fast suite (default) vs. load tests
-cd service-a && mvn test                      # 37 tests
-mvn test -Dgroups=load                        # throughput/latency benchmarks
+# scheduler-engine — fast suite (default) vs. load tests
+cd scheduler-engine && mvn test                          # 37 tests
+mvn test -Dgroups=load -Dsurefire.excludedGroups=         # throughput/latency benchmarks
 
-# Service B — fast suite (default, no live model calls) vs. real-model tests
-cd service-b && python -m pytest              # 44 tests, mocked dependencies
+# recording-pipeline — fast suite (default, no live model calls) vs. real-model tests
+cd recording-pipeline && python -m pytest     # 44 tests, mocked dependencies
 python -m pytest -m slow                      # requires live Ollama + Whisper
 ```
 

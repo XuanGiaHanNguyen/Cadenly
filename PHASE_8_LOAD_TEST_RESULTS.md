@@ -1,10 +1,10 @@
 # Phase 8: Load Testing Results
 
-Real numbers from actual runs against a live Service A (embedded server) and live Service B + Ollama (llama3.1:8b) + faster-whisper, all on the same development machine. Absolute milliseconds are machine-dependent; the relative comparisons (which stage/scenario is slower, and by how much) are the more portable takeaway.
+Real numbers from actual runs against a live scheduler-engine (embedded server) and live recording-pipeline + Ollama (llama3.1:8b) + faster-whisper, all on the same development machine. Absolute milliseconds are machine-dependent; the relative comparisons (which stage/scenario is slower, and by how much) are the more portable takeaway.
 
-## 1. Service A — `POST /api/tasks/submit` under concurrent load
+## 1. Scheduler Engine — `POST /api/tasks/submit` under concurrent load
 
-**Method:** `TaskSubmissionLoadTest` (`service-a/src/test/java/.../loadtest/`), tagged `@Tag("load")` and excluded from the default `mvn test` run. Spins up a real embedded server (`@SpringBootTest(webEnvironment = RANDOM_PORT)`) and drives it with 200 real concurrent HTTP requests via `TestRestTemplate`, using `ConcurrencyHarness.runConcurrentlyTimed` (the same gated `CountDownLatch` + `ExecutorService` pattern as Phase 3's benchmark, generalized to record per-request latency). Run explicitly with `mvn test -Dsurefire.excludedGroups= -Dgroups=load`.
+**Method:** `TaskSubmissionLoadTest` (`scheduler-engine/src/test/java/.../loadtest/`), tagged `@Tag("load")` and excluded from the default `mvn test` run. Spins up a real embedded server (`@SpringBootTest(webEnvironment = RANDOM_PORT)`) and drives it with 200 real concurrent HTTP requests via `TestRestTemplate`, using `ConcurrencyHarness.runConcurrentlyTimed` (the same gated `CountDownLatch` + `ExecutorService` pattern as Phase 3's benchmark, generalized to record per-request latency). Run explicitly with `mvn test -Dsurefire.excludedGroups= -Dgroups=load`.
 
 | Metric | Scenario A: 200 distinct owners | Scenario B: 200 requests, 1 owner |
 |---|---|---|
@@ -20,9 +20,9 @@ Real numbers from actual runs against a live Service A (embedded server) and liv
 
 Scenario A gives every request its own owner (via the new `loadtest-user-<n>` deterministic-UUID pattern in `UserDirectoryService`) and a generous 7-day deadline window, so it measures the REST/scheduling stack's raw throughput ceiling with no lock contention: all 200 placed cleanly. Scenario B sends 200 concurrent single-task requests at the *same* owner within a tight 2-hour window that only fits ~4 non-overlapping 30-minute slots — a realistic "many people submit to one busy calendar at once" scenario. Counter-intuitively, Scenario B is both faster *and* higher-throughput than Scenario A: once the first few slots fill, most of the 200 requests fail fast (no free slot found in a narrow 2-hour window) rather than doing full free-slot search over a 7-day window, so the *contended* scenario does less average work per request even though it's exercising the shared-lock path Phase 3 was built to stress-test. This is a genuine, correctly-reported outcome, not a bug: `placed=3` and `rejected=197` are exactly what a saturated calendar under concurrent load should produce.
 
-## 2. Service B — per-stage pipeline latency by meeting length
+## 2. Recording Pipeline — per-stage pipeline latency by meeting length
 
-**Method:** `service-b/scripts/load_test_pipeline_stages.py` (standalone script, not a pytest test — its job is producing a report). Generates real speech audio via macOS `say`/`afconvert` (same mechanism as Phase 5's fixtures) for 1/5/15-minute meeting scripts built from a rotating template pool, then times each stage using the *actual output* of the previous stage as input (transcribed text feeds summarize/extract, not the original script) — an honest per-stage breakdown, not synthetic disconnected inputs.
+**Method:** `recording-pipeline/scripts/load_test_pipeline_stages.py` (standalone script, not a pytest test — its job is producing a report). Generates real speech audio via macOS `say`/`afconvert` (same mechanism as Phase 5's fixtures) for 1/5/15-minute meeting scripts built from a rotating template pool, then times each stage using the *actual output* of the previous stage as input (transcribed text feeds summarize/extract, not the original script) — an honest per-stage breakdown, not synthetic disconnected inputs.
 
 | Length | Transcript words | Transcribe | Summarize | Extract (Ollama) | Resolve deadlines | Total | Tasks found |
 |---|---|---|---|---|---|---|---|
@@ -36,7 +36,7 @@ Extraction is the clear and worsening bottleneck: it's already the largest stage
 
 ## 3. End-to-end pipeline throughput (`POST /pipeline/process`)
 
-**Method:** `service-b/scripts/load_test_e2e_pipeline.py`, real HTTP calls against a live Service B (uvicorn) which in turn calls live Ollama and live Service A. **Sequential, not concurrent, deliberately**: Ollama is one local model instance, so concurrent pipeline calls would mostly queue behind each other rather than reveal real parallelism — that would measure queuing, not throughput. Five runs across the Phase 6 golden transcripts (short, single-meeting-length inputs).
+**Method:** `recording-pipeline/scripts/load_test_e2e_pipeline.py`, real HTTP calls against a live recording-pipeline (uvicorn) which in turn calls live Ollama and live scheduler-engine. **Sequential, not concurrent, deliberately**: Ollama is one local model instance, so concurrent pipeline calls would mostly queue behind each other rather than reveal real parallelism — that would measure queuing, not throughput. Five runs across the Phase 6 golden transcripts (short, single-meeting-length inputs).
 
 | Run | Latency | Placed | Rejected | Unresolved |
 |---|---|---|---|---|

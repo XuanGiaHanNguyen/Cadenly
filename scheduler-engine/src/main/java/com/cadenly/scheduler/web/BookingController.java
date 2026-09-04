@@ -15,8 +15,8 @@ import java.util.UUID;
 
 /**
  * Minimal entry point so something reachable from a browser can trigger a
- * booking - this is also a preview of the Phase 7 Service-B-calls-Service-A
- * path, just invoked manually here instead of from the AI pipeline.
+ * booking - this is also a preview of the Phase 7 recording-pipeline-calls-
+ * scheduler-engine path, just invoked manually here instead of from the AI pipeline.
  */
 @RestController
 @CrossOrigin(origins = "http://localhost:3000")

@@ -1,7 +1,7 @@
 """
 Phase 8 load test: full end-to-end pipeline throughput via real HTTP calls
-to POST /pipeline/process. Requires a live Service B (uvicorn) AND a live
-Service A (for the scheduling submission step).
+to POST /pipeline/process. Requires a live recording-pipeline (uvicorn) AND
+a live scheduler-engine (for the scheduling submission step).
 
 Sequential, not concurrent, deliberately: Ollama is a single local model
 instance, so concurrent /pipeline/process calls would mostly queue behind
@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from tests.fixtures.golden_transcripts import CLEAR_ACTION_ITEMS, NO_ACTION_ITEMS, VAGUE_DEADLINE
 
-SERVICE_B_URL = "http://localhost:8000/pipeline/process"
+RECORDING_PIPELINE_URL = "http://localhost:8000/pipeline/process"
 
 RUNS = [
     ("golden: clear action items", CLEAR_ACTION_ITEMS),
@@ -47,7 +47,7 @@ def main() -> None:
 
         start = time.perf_counter()
         response = httpx.post(
-            SERVICE_B_URL,
+            RECORDING_PIPELINE_URL,
             json={"text": text, "recording_timestamp": recording_timestamp},
             timeout=300.0,
         )

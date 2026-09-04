@@ -9,9 +9,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * The REST adapter over SchedulingService.submitTasks - the Phase 1-2
- * design's "Service B calls a single Service A method" seam. Called
- * server-to-server from Service B, not from a browser, so no CORS
- * configuration is needed here (unlike BookingController).
+ * design's "the recording pipeline calls a single scheduler-engine method"
+ * seam. Called server-to-server from the recording pipeline, not from a
+ * browser, so no CORS configuration is needed here (unlike BookingController).
  */
 @RestController
 public class TaskSubmissionController {

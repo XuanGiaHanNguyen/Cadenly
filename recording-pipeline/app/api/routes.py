@@ -109,6 +109,6 @@ def process(
     except MalformedExtractionError as e:
         raise HTTPException(status_code=502, detail=f"task extraction failed: {e}")
     except SchedulerClientError as e:
-        raise HTTPException(status_code=502, detail=f"Service A task submission failed: {e}")
+        raise HTTPException(status_code=502, detail=f"scheduler engine task submission failed: {e}")
 
     return ProcessPipelineResponse.model_validate(result)

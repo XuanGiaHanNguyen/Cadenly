@@ -27,12 +27,12 @@ class RecordingSummarizeResponse(BaseModel):
 
 
 class ExtractedTask(BaseModel):
-    """Extraction-layer intermediate format - NOT Service A's Task model.
-    owner is a best-effort name string (not a UUID) and deadline_hint is a
-    raw, unresolved phrase (not an Instant). Phase 7 resolves both against
-    a real user directory and a reference timestamp when serializing into
-    Service A's REST payload; that resolution needs context this
-    stateless extraction call doesn't have."""
+    """Extraction-layer intermediate format - NOT the scheduler engine's Task
+    model. owner is a best-effort name string (not a UUID) and deadline_hint
+    is a raw, unresolved phrase (not an Instant). Phase 7 resolves both
+    against a real user directory and a reference timestamp when serializing
+    into the scheduler engine's REST payload; that resolution needs context
+    this stateless extraction call doesn't have."""
 
     owner: str = Field(description="Best-effort name from the transcript, or 'Unassigned'")
     description: str

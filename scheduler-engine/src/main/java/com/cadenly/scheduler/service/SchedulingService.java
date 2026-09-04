@@ -23,12 +23,12 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * The Service-B-facing entry point this project's Phase 1-2 design called
- * out as a seam: "Service B should call a single Service A method, e.g.
- * SchedulingService.submitTasks(List<Task>)". TaskSubmissionController is
- * the thin REST adapter over this.
+ * The recording-pipeline-facing entry point this project's Phase 1-2 design
+ * called out as a seam: "the recording pipeline should call a single
+ * scheduler-engine method, e.g. SchedulingService.submitTasks(List<Task>)".
+ * TaskSubmissionController is the thin REST adapter over this.
  *
- * Owner resolution happens here (not in Service B) because Service A owns
+ * Owner resolution happens here (not in the recording pipeline) because the scheduler engine owns
  * the User/Calendar domain; a task whose owner can't be resolved never
  * becomes a Task domain object or reaches the scheduler at all - there's
  * no meaningful calendar to schedule it against.

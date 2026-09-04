@@ -65,7 +65,7 @@ def test_process_pipeline_extracts_resolves_and_submits():
         assert body["placed"][0]["description"] == "Send report"
 
         # deadline_hint should have been resolved to a concrete ISO instant
-        # before being sent to Service A, not passed through raw
+        # before being sent to the scheduler engine, not passed through raw
         submitted = scheduler.last_submitted_tasks
         assert len(submitted) == 1
         assert submitted[0]["ownerName"] == "John"
@@ -93,12 +93,12 @@ def test_process_pipeline_returns_502_on_malformed_extraction():
         app.dependency_overrides.clear()
 
 
-def test_process_pipeline_returns_502_when_service_a_unreachable():
+def test_process_pipeline_returns_502_when_scheduler_engine_unreachable():
     extraction = FakeExtractionService(tasks=[
         ExtractedTask(owner="John", description="Send report", deadline_hint="by Friday",
                       estimated_duration_minutes=30, priority=7)
     ])
-    scheduler = FakeSchedulerClient(raises=SchedulerClientError("Service A unreachable after retry"))
+    scheduler = FakeSchedulerClient(raises=SchedulerClientError("Scheduler engine unreachable after retry"))
     _override(extraction_service=extraction, scheduler_client=scheduler)
 
     try:

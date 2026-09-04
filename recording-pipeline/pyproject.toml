@@ -1,7 +1,7 @@
 [project]
-name = "service-b"
+name = "recording-pipeline"
 version = "0.1.0"
-description = "Service B: Recording & AI Pipeline (audio ingestion, transcription, TextRank summarization)"
+description = "Recording Pipeline: audio ingestion, transcription, TextRank summarization, and task extraction"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
@@ -28,6 +28,6 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 markers = [
-    "slow: exercises a real external dependency (faster-whisper, a locally-running Ollama model, or a live Service A instance), excluded by default",
+    "slow: exercises a real external dependency (faster-whisper, a locally-running Ollama model, or a live scheduler-engine instance), excluded by default",
 ]
 addopts = "-m 'not slow'"
