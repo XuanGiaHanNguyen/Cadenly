@@ -21,8 +21,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * Real accounts: registering here both creates a login-capable user and
@@ -36,6 +38,8 @@ import java.util.UUID;
 public class AuthController {
 
     private static final List<String> VALID_CALENDAR_PREFERENCES = List.of("google", "manual");
+    private static final List<String> VALID_WORK_DAYS = List.of("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN");
+    private static final Pattern TIME_PATTERN = Pattern.compile("^([01]\\d|2[0-3]):[0-5]\\d$");
 
     public record RegisterRequest(String email, String password, String displayName) {
     }
@@ -43,11 +47,14 @@ public class AuthController {
     public record LoginRequest(String email, String password) {
     }
 
-    public record OnboardingRequest(String occupation, String calendarPreference) {
+    public record OnboardingRequest(String occupation, List<String> workDays, String workStartTime,
+                                     String workEndTime, String calendarPreference) {
     }
 
     /** occupation/calendarPreference are both null until onboarding completes - the frontend treats occupation == null as "needs onboarding". */
-    public record CurrentUserResponse(UUID id, String email, String displayName, String occupation, String calendarPreference) {
+    public record CurrentUserResponse(UUID id, String email, String displayName, String occupation,
+                                       List<String> workDays, String workStartTime, String workEndTime,
+                                       String calendarPreference) {
     }
 
     private final UserJpaRepository userJpaRepository;
@@ -118,18 +125,29 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         if (request.occupation() == null || request.occupation().isBlank()
-                || request.calendarPreference() == null || !VALID_CALENDAR_PREFERENCES.contains(request.calendarPreference())) {
+                || request.calendarPreference() == null || !VALID_CALENDAR_PREFERENCES.contains(request.calendarPreference())
+                || request.workDays() == null || request.workDays().isEmpty() || !VALID_WORK_DAYS.containsAll(request.workDays())
+                || request.workStartTime() == null || !TIME_PATTERN.matcher(request.workStartTime()).matches()
+                || request.workEndTime() == null || !TIME_PATTERN.matcher(request.workEndTime()).matches()
+                || request.workStartTime().compareTo(request.workEndTime()) >= 0) {
             return ResponseEntity.badRequest().build();
         }
         UserEntity user = userJpaRepository.findByEmail(authentication.getName()).orElseThrow();
         user.setOccupation(request.occupation().strip());
+        user.setWorkDays(String.join(",", request.workDays()));
+        user.setWorkStartTime(request.workStartTime());
+        user.setWorkEndTime(request.workEndTime());
         user.setCalendarPreference(request.calendarPreference());
         userJpaRepository.save(user);
         return ResponseEntity.ok(toResponse(user));
     }
 
     private static CurrentUserResponse toResponse(UserEntity user) {
-        return new CurrentUserResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getOccupation(), user.getCalendarPreference());
+        List<String> workDays = user.getWorkDays() == null || user.getWorkDays().isBlank()
+                ? null
+                : Arrays.asList(user.getWorkDays().split(","));
+        return new CurrentUserResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.getOccupation(),
+                workDays, user.getWorkStartTime(), user.getWorkEndTime(), user.getCalendarPreference());
     }
 
     private void establishSession(String email, String password, HttpServletRequest httpRequest) {

@@ -20,13 +20,26 @@ const OCCUPATIONS = [
 
 type CalendarChoice = "google" | "manual" | null;
 
+const WORK_DAYS = [
+  { code: "MON", label: "Mon" },
+  { code: "TUE", label: "Tue" },
+  { code: "WED", label: "Wed" },
+  { code: "THU", label: "Thu" },
+  { code: "FRI", label: "Fri" },
+  { code: "SAT", label: "Sat" },
+  { code: "SUN", label: "Sun" },
+];
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
 
   const [occupation, setOccupation] = useState("");
   const [customOccupation, setCustomOccupation] = useState("");
+  const [workDays, setWorkDays] = useState<Set<string>>(new Set(["MON", "TUE", "WED", "THU", "FRI"]));
+  const [workStartTime, setWorkStartTime] = useState("09:00");
+  const [workEndTime, setWorkEndTime] = useState("17:00");
   const [calendarChoice, setCalendarChoice] = useState<CalendarChoice>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +60,16 @@ export default function OnboardingPage() {
 
   const resolvedOccupation = occupation === "Other" ? customOccupation.trim() : occupation;
   const canContinueStep1 = resolvedOccupation.length > 0;
+  const canContinueStep2 = workDays.size > 0 && workStartTime < workEndTime;
+
+  function toggleWorkDay(code: string) {
+    setWorkDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  }
 
   async function finish(choice: Exclude<CalendarChoice, null>) {
     setCalendarChoice(choice);
@@ -57,7 +80,13 @@ export default function OnboardingPage() {
       const response = await apiFetch("/api/auth/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ occupation: resolvedOccupation, calendarPreference: choice }),
+        body: JSON.stringify({
+          occupation: resolvedOccupation,
+          workDays: WORK_DAYS.map((d) => d.code).filter((code) => workDays.has(code)),
+          workStartTime,
+          workEndTime,
+          calendarPreference: choice,
+        }),
       });
       if (!response.ok) {
         setError("Something went wrong saving your setup.");
@@ -91,8 +120,9 @@ export default function OnboardingPage() {
 
         <div className="rounded-2xl border border-neutral-200 bg-white p-6">
           <div className="mb-6 flex items-center gap-2">
-            <div className={`h-1.5 flex-1 rounded-full ${step >= 1 ? "bg-brand-900" : "bg-neutral-200"}`} />
-            <div className={`h-1.5 flex-1 rounded-full ${step >= 2 ? "bg-brand-900" : "bg-neutral-200"}`} />
+            {[1, 2, 3].map((s) => (
+              <div key={s} className={`h-1.5 flex-1 rounded-full ${step >= s ? "bg-brand-900" : "bg-neutral-200"}`} />
+            ))}
           </div>
 
           {step === 1 && (
@@ -139,6 +169,72 @@ export default function OnboardingPage() {
 
           {step === 2 && (
             <>
+              <h1 className="text-xl font-semibold">When do you work?</h1>
+              <p className="mt-1 text-sm text-neutral-500">
+                We&apos;ll keep scheduling inside these hours and gray out the rest on your calendar.
+              </p>
+
+              <div className="mt-6 flex flex-wrap gap-2">
+                {WORK_DAYS.map((day) => (
+                  <button
+                    key={day.code}
+                    type="button"
+                    onClick={() => toggleWorkDay(day.code)}
+                    className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                      workDays.has(day.code)
+                        ? "border-brand-900 bg-brand-900 text-white"
+                        : "border-neutral-200 text-neutral-700 hover:border-neutral-400"
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 flex items-center gap-3">
+                <label className="flex-1 text-sm text-neutral-600">
+                  Start
+                  <input
+                    type="time"
+                    value={workStartTime}
+                    onChange={(e) => setWorkStartTime(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 outline-none focus:border-neutral-500"
+                  />
+                </label>
+                <label className="flex-1 text-sm text-neutral-600">
+                  End
+                  <input
+                    type="time"
+                    value={workEndTime}
+                    onChange={(e) => setWorkEndTime(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 outline-none focus:border-neutral-500"
+                  />
+                </label>
+              </div>
+
+              {workStartTime >= workEndTime && (
+                <p className="mt-2 text-xs text-red-600">End time must be after start time.</p>
+              )}
+
+              <button
+                disabled={!canContinueStep2}
+                onClick={() => setStep(3)}
+                className="mt-6 w-full rounded-lg bg-brand-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-800 disabled:opacity-40"
+              >
+                Continue
+              </button>
+
+              <button
+                onClick={() => setStep(1)}
+                className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-neutral-600"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Back
+              </button>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
               <h1 className="text-xl font-semibold">Bring your calendar</h1>
               <p className="mt-1 text-sm text-neutral-500">Import what you already have, or start clean with Cadenly.</p>
 
@@ -177,7 +273,7 @@ export default function OnboardingPage() {
               {error && <p className="mt-4 text-xs text-red-600">{error}</p>}
 
               <button
-                onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
                 className="mt-6 inline-flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-neutral-600"
               >
                 <ArrowLeft className="h-3.5 w-3.5" /> Back

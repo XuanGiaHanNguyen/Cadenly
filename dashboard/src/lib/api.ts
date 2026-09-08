@@ -5,6 +5,9 @@ export type CurrentUser = {
   email: string;
   displayName: string;
   occupation: string | null;
+  workDays: string[] | null;
+  workStartTime: string | null;
+  workEndTime: string | null;
   calendarPreference: string | null;
 };
 

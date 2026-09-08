@@ -42,6 +42,16 @@ public class UserEntity {
     @Column(name = "calendar_preference")
     private String calendarPreference;
 
+    /** Comma-separated day codes, e.g. "MON,TUE,WED,THU,FRI". Null until onboarding sets it. */
+    @Column(name = "work_days")
+    private String workDays;
+
+    @Column(name = "work_start_time")
+    private String workStartTime;
+
+    @Column(name = "work_end_time")
+    private String workEndTime;
+
     protected UserEntity() {
     }
 
@@ -92,5 +102,29 @@ public class UserEntity {
 
     public void setCalendarPreference(String calendarPreference) {
         this.calendarPreference = calendarPreference;
+    }
+
+    public String getWorkDays() {
+        return workDays;
+    }
+
+    public void setWorkDays(String workDays) {
+        this.workDays = workDays;
+    }
+
+    public String getWorkStartTime() {
+        return workStartTime;
+    }
+
+    public void setWorkStartTime(String workStartTime) {
+        this.workStartTime = workStartTime;
+    }
+
+    public String getWorkEndTime() {
+        return workEndTime;
+    }
+
+    public void setWorkEndTime(String workEndTime) {
+        this.workEndTime = workEndTime;
     }
 }
